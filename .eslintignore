@@ -1,8 +1,0 @@
-node_modules/
-**/uploads/
-**/public/
-**/*.min.js
-.env
-.eslintrc.js
-**/__tests__/   # Если будут тесты
-**/coverage/

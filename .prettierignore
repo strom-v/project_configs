@@ -1,4 +1,16 @@
-package-lock.json
 node_modules
 dist
 build
+.next
+.nuxt
+.output
+.cache
+.turbo
+coverage
+**/uploads/
+**/public/
+**/*.min.js
+**/*.min.css
+package-lock.json
+.env
+.env.*
