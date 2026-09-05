@@ -1,6 +1,7 @@
 import js from '@eslint/js';
 import globals from 'globals';
 
+// подключаем опциональные плагины только если они установлены в проекте
 async function tryImport(name) {
   try {
     return await import(name);
@@ -9,140 +10,74 @@ async function tryImport(name) {
   }
 }
 
-const [tseslint, vuePlugin, vueParser, reactPlugin, reactHooksPlugin, jsxA11yPlugin, nextPlugin, importPlugin, prettierConfig] = await Promise.all([
+// TS-поддержка: либо мета-пакет typescript-eslint, либо отдельные plugin + parser
+const [tseslint, tsPlugin, tsParser, prettierConfig] = await Promise.all([
   tryImport('typescript-eslint'),
-  tryImport('eslint-plugin-vue'),
-  tryImport('vue-eslint-parser'),
-  tryImport('eslint-plugin-react'),
-  tryImport('eslint-plugin-react-hooks'),
-  tryImport('eslint-plugin-jsx-a11y'),
-  tryImport('@next/eslint-plugin-next'),
-  tryImport('eslint-plugin-import'),
+  tryImport('@typescript-eslint/eslint-plugin'),
+  tryImport('@typescript-eslint/parser'),
   tryImport('eslint-config-prettier'),
 ]);
 
+const hasTs = Boolean(tseslint || (tsPlugin && tsParser));
+
 const config = [
   {
-    ignores: ['**/node_modules/**', '**/dist/**', '**/build/**', '**/.next/**', '**/.nuxt/**', '**/.output/**', '**/coverage/**', '**/uploads/**', '**/public/**', '**/*.min.js', '.env'],
+    ignores: ['dist/**', 'build/**', 'coverage/**', '**/*.min.js'],
   },
   js.configs.recommended,
   {
+    files: ['**/*.js', '**/*.ts', '**/*.jsx', '**/*.tsx'],
     languageOptions: {
-      ecmaVersion: 'latest',
-      sourceType: 'module',
       globals: {
         ...globals.browser,
         ...globals.node,
-        ...globals.es2024,
+        ...globals.es2021,
       },
     },
+  },
+  {
+    files: ['**/*.js', '**/*.jsx'],
     rules: {
-      'no-var': 'error',
+      'no-unused-vars': 'error',
+      'no-console': 'warn',
       'prefer-const': 'error',
-      'prefer-template': 'error',
-      'object-shorthand': 'error',
-      'no-console': ['warn', { allow: ['warn', 'error'] }],
-      'no-debugger': 'error',
-      eqeqeq: ['error', 'always'],
-      'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      'no-var': 'error',
     },
   },
 ];
 
-if (tseslint) {
-  config.push(
-    ...tseslint.default.configs.recommended,
-    {
-      files: ['**/*.ts', '**/*.tsx', '**/*.mts', '**/*.cts', '**/*.vue'],
-      languageOptions: {
-        parser: tseslint.default.parser,
-        parserOptions: { ecmaVersion: 'latest', sourceType: 'module' },
-      },
-      rules: {
-        '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
-        '@typescript-eslint/no-explicit-any': 'warn',
-        '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports', fixStyle: 'separate-type-imports' }],
-        '@typescript-eslint/consistent-type-definitions': ['error', 'interface'],
-        'no-unused-vars': 'off',
-      },
-    }
-  );
-}
+// TypeScript-правила — только если в проекте есть typescript-eslint
+if (hasTs) {
+  if (tseslint) {
+    config.push(...tseslint.default.configs.recommended);
+  } else {
+    config.push({
+      files: ['**/*.ts', '**/*.tsx'],
+      plugins: { '@typescript-eslint': tsPlugin.default },
+      rules: { ...tsPlugin.default.configs.recommended.rules },
+    });
+  }
 
-if (vuePlugin && vueParser) {
-  config.push(...vuePlugin.default.configs['flat/recommended'], {
-    files: ['**/*.vue'],
+  config.push({
+    files: ['**/*.ts', '**/*.tsx'],
     languageOptions: {
-      parser: vueParser.default,
+      parser: (tseslint && tseslint.default.parser) || tsParser.default,
       parserOptions: {
-        parser: tseslint ? tseslint.default.parser : undefined,
         ecmaVersion: 'latest',
         sourceType: 'module',
-        extraFileExtensions: ['.vue'],
       },
     },
     rules: {
-      'vue/multi-word-component-names': 'off',
-      'vue/no-v-html': 'off',
-      'vue/component-api-style': ['error', ['script-setup', 'composition']],
-      'vue/define-macros-order': ['error', { order: ['defineProps', 'defineEmits', 'defineModel'] }],
+      'no-undef': 'off',
+      'no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': 'error',
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/consistent-type-imports': 'warn',
     },
   });
 }
 
-if (reactPlugin) {
-  config.push({
-    files: ['**/*.jsx', '**/*.tsx'],
-    plugins: {
-      react: reactPlugin.default,
-      ...(reactHooksPlugin && { 'react-hooks': reactHooksPlugin.default }),
-      ...(jsxA11yPlugin && { 'jsx-a11y': jsxA11yPlugin.default }),
-      ...(nextPlugin && { '@next/next': nextPlugin.default }),
-    },
-    languageOptions: {
-      parserOptions: { ecmaFeatures: { jsx: true } },
-    },
-    settings: { react: { version: 'detect' } },
-    rules: {
-      ...reactPlugin.default.configs.recommended.rules,
-      ...(reactHooksPlugin?.default.configs.recommended?.rules ?? {}),
-      ...(nextPlugin?.default.configs.recommended?.rules ?? {}),
-      'react/react-in-jsx-scope': 'off',
-      'react/jsx-uses-react': 'off',
-      'react/prop-types': 'off',
-      'react/prefer-stateless-function': 'error',
-      'react/self-closing-comp': 'error',
-    },
-  });
-}
-
-if (importPlugin) {
-  config.push({
-    plugins: { import: importPlugin.default },
-    rules: {
-      'import/no-duplicates': 'error',
-      'import/no-self-import': 'error',
-      'import/newline-after-import': 'error',
-      'import/order': [
-        'error',
-        {
-          groups: ['builtin', 'external', 'internal', ['parent', 'sibling', 'index']],
-          pathGroups: [
-            { pattern: 'react', group: 'external', position: 'before' },
-            { pattern: 'react-dom', group: 'external', position: 'before' },
-            { pattern: 'react/**', group: 'external', position: 'before' },
-            { pattern: 'react-dom/**', group: 'external', position: 'before' },
-            { pattern: '@/**', group: 'internal' },
-            { pattern: '~/**', group: 'internal' },
-          ],
-          pathGroupsExcludedImportTypes: ['react'],
-          'newlines-between': 'always',
-        },
-      ],
-    },
-  });
-}
-
+// отключаем правила, конфликтующие с prettier — если он подключён
 if (prettierConfig) {
   config.push(prettierConfig.default);
 }

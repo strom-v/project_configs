@@ -1,6 +1,6 @@
 {
   "endOfLine": "lf",
-  "printWidth": 350,
+  "printWidth": 150,
   "tabWidth": 2,
   "useTabs": false,
   "semi": true,
@@ -10,5 +10,5 @@
   "bracketSpacing": true,
   "bracketSameLine": false,
   "arrowParens": "always",
-  "singleAttributePerLine": false
+  "singleAttributePerLine": true
 }

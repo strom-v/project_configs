@@ -1,27 +1,31 @@
 node_modules
 dist
 build
+out
 .next
 .nuxt
 .output
 .cache
 .turbo
 coverage
+.nyc_output
+
 logs
 *.log
+npm-debug.log*
 backup
 
 .DS_Store
 .idea
 .vscode
+*.swp
+*.swo
 
 .env
 .env.*
 
 package-lock.json
 
-eslint.config.js
-.prettierrc
-.prettierignore
 .dockerignore
-tsconfig.json
+.prettierignore
+.prettierrc
